@@ -1,8 +1,17 @@
-import { Controller, Get, Inject, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Inject,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { PRODUCT_SERVICE } from '../config/services';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { firstValueFrom } from 'rxjs';
+import { CreateProductRequestDto } from './dto/create-product-request.dto';
 
 @Controller('products')
 export class ProductsController {
@@ -11,8 +20,11 @@ export class ProductsController {
   ) {}
 
   @Post()
-  createProduct() {
-    return 'Crea un producto';
+  createProduct(@Body() createProductDto: CreateProductRequestDto) {
+    return this.productsClient.send(
+      { cmd: 'create_product' },
+      createProductDto,
+    );
   }
 
   @Get()
