@@ -1,41 +1,47 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Inject,
-  Param,
-  Post,
-  Query,
-} from '@nestjs/common';
-import { NATS_SERVICE } from '../config/services';
-import { ClientProxy, RpcException } from '@nestjs/microservices';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { PaginationDto } from '../common/dto/pagination.dto';
-import { firstValueFrom } from 'rxjs';
 import { CreateProductRequestDto } from './dto/create-product-request.dto';
+import { KafkaProducerService } from '../transports/kafka-producer.service';
+import { RpcException } from '@nestjs/microservices';
+import { GetProductsResponseDto } from './dto/get-products.response.dto';
 
 @Controller('products')
 export class ProductsController {
-  constructor(@Inject(NATS_SERVICE) private readonly client: ClientProxy) {}
+  constructor(private readonly kafkaProducerService: KafkaProducerService) {}
 
   @Post()
-  createProduct(@Body() createProductDto: CreateProductRequestDto) {
-    return this.client.send('create_product', createProductDto);
+  async createProduct(@Body() createProductDto: CreateProductRequestDto) {
+    const response = await this.kafkaProducerService.sendAndReceive(
+      'create_product',
+      createProductDto,
+    );
+    return response; // Devolver la respuesta del microservicio al cliente
   }
 
   @Get()
-  findAllProducts(@Query() paginationDto: PaginationDto) {
-    return this.client.send('find_all_products', paginationDto);
+  async findAllProducts(@Query() paginationDto: PaginationDto) {
+    // Enviar mensaje al topic `findAllOrders` con los datos de paginación
+    const products =
+      await this.kafkaProducerService.sendAndReceive<GetProductsResponseDto>(
+        'find_all_products', // Nombre del topic
+        paginationDto, // Payload del mensaje
+      );
+
+    return products; // Devolver la respuesta del microservicio
   }
 
   @Get(':id')
   async findOne(@Param('id') id: string) {
     try {
-      const product = await firstValueFrom(
-        this.client.send('find_one_product', { id }),
+      // Enviar mensaje al topic `findOneOrder` con el ID solicitado
+      const product = await this.kafkaProducerService.sendAndReceive(
+        'find_one_product', // Nombre del topic
+        { id }, // Payload del mensaje
       );
-      return product;
+
+      return product; // Devolver la respuesta del microservicio
     } catch (error) {
-      throw new RpcException(error);
+      throw new RpcException(error.message || 'Error fetching order');
     }
   }
 }

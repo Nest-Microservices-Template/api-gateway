@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ProductsController } from './products.controller';
-import { NatsModule } from '../transports/nats.module';
+import { KafkaModule } from '../transports/kafka.module';
+import { KafkaProducerService } from '../transports/kafka-producer.service';
 
 @Module({
   controllers: [ProductsController],
-  providers: [],
-  imports: [NatsModule],
+  providers: [KafkaProducerService],
+  imports: [KafkaModule],
 })
 export class ProductsModule {}
