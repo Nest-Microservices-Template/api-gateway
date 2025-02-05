@@ -1,6 +1,6 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
-import { lastValueFrom } from 'rxjs';
+import { lastValueFrom, retry, timeout } from 'rxjs';
 
 @Injectable()
 export class KafkaProducerService implements OnModuleInit {
@@ -30,6 +30,10 @@ export class KafkaProducerService implements OnModuleInit {
   }
 
   async sendAndReceive<T>(topic: string, message: any): Promise<T> {
-    return lastValueFrom(this.client.send(topic, JSON.stringify(message)));
+    return lastValueFrom(
+      this.client.send(topic, JSON.stringify(message)).pipe(
+        timeout(5000), // ⏳ Falla después de 5 segundos si no hay respuesta
+      ),
+    );
   }
 }

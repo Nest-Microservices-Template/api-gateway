@@ -11,11 +11,19 @@ export class ProductsController {
 
   @Post()
   async createProduct(@Body() createProductDto: CreateProductRequestDto) {
-    const response = await this.kafkaProducerService.sendAndReceive(
-      'create_product',
-      createProductDto,
-    );
-    return response; // Devolver la respuesta del microservicio al cliente
+    try {
+      const response = await this.kafkaProducerService.sendAndReceive(
+        'create_product',
+        createProductDto,
+      );
+      return response; // Devolver la respuesta del microservicio al cliente
+    } catch (error) {
+      console.error('Error en Kafka:', error);
+      throw new RpcException({
+        statusCode: 504,
+        message: 'El servicio de productos no está disponible en este momento.',
+      });
+    }
   }
 
   @Get()
